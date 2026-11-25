@@ -1,0 +1,2507 @@
+```html
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- PWA / Android -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#030712">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    @media (max-width: 600px) {
+      .app-shell { padding: 12px 10px 90px; }
+      .hud-header { padding: 12px 14px; }
+      .sys-player-line { font-size: 17px; }
+      .hud-card { padding: 14px; }
+      .card-title { font-size: 17px; }
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 38px; }
+      .plus-btn { width: 36px; height: 36px; }
+      .quest-item { flex-direction: column; align-items: stretch; }
+      .quest-item > div:last-child { display: flex; gap: 6px; }
+      .quest-item > div:last-child .btn { flex: 1; }
+      input[type="range"] { height: 32px; }
+      .hud-nav {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+        margin: 0; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+        background: rgba(3, 7, 18, 0.96); border-top: 1px solid var(--border-hud);
+        backdrop-filter: blur(10px);
+      }
+      .hud-tab { font-size: 11px; padding: 9px 11px; }
+      .modal-box { padding: 20px; }
+    }
+    input, select, textarea { font-size: 16px !important; }
+  </style>
+  <title>[SYSTEM] — Okno Statusu & Przebudzenie Gracza</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg-void: #030712;
+      --bg-panel: rgba(8, 17, 38, 0.88);
+      --bg-panel-light: rgba(13, 27, 58, 0.78);
+      --bg-input: rgba(4, 10, 24, 0.9);
+      --cyan: #00e5ff;
+      --cyan-dim: rgba(0, 229, 255, 0.22);
+      --cyan-glow: rgba(0, 229, 255, 0.55);
+      --blue: #38bdf8;
+      --purple: #a855f7;
+      --purple-glow: rgba(168, 85, 247, 0.45);
+      --gold: #fbbf24;
+      --gold-dim: rgba(251, 191, 36, 0.2);
+      --crimson: #f43f5e;
+      --crimson-dim: rgba(244, 63, 94, 0.22);
+      --emerald: #10b981;
+      --text-main: #e2f1ff;
+      --text-muted: #7fa2c7;
+      --border-hud: rgba(0, 229, 255, 0.35);
+      --shadow-hud: 0 0 25px rgba(0, 229, 255, 0.12), inset 0 0 20px rgba(0, 229, 255, 0.05);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--bg-void);
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(0, 229, 255, 0.09), transparent 35%),
+        radial-gradient(circle at 85% 80%, rgba(168, 85, 247, 0.10), transparent 40%),
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+      color: var(--text-main);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+      color: inherit;
+    }
+
+    button { cursor: pointer; }
+
+    .app-shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 18px 18px 60px;
+    }
+
+    /* HUD HEADER */
+    .hud-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 22px;
+      margin-bottom: 18px;
+      background: linear-gradient(135deg, rgba(8, 22, 48, 0.95), rgba(14, 18, 42, 0.92));
+      border: 1px solid var(--border-hud);
+      box-shadow: var(--shadow-hud);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hud-header::before, .hud-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--purple), transparent);
+    }
+
+    .sys-title-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .sys-crest {
+      width: 50px;
+      height: 50px;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 15px var(--cyan-dim), inset 0 0 12px var(--cyan-dim);
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      font-size: 22px;
+      color: var(--cyan);
+      letter-spacing: 1px;
+      background: rgba(0, 229, 255, 0.06);
+    }
+
+    .sys-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.22em;
+      color: var(--cyan);
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .sys-player-line {
+      margin: 2px 0 0;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      background: rgba(0, 229, 255, 0.12);
+      text-transform: uppercase;
+    }
+
+    .rank-badge.s-rank {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(251, 191, 36, 0.15);
+      box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+    }
+
+    .rank-badge.monarch {
+      border-color: var(--purple);
+      color: #e9d5ff;
+      background: rgba(168, 85, 247, 0.25);
+      box-shadow: 0 0 14px var(--purple-glow);
+    }
+
+    .hud-quickbars {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .mini-stat {
+      text-align: right;
+    }
+
+    .mini-stat span {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .mini-stat strong {
+      font-size: 17px;
+      color: var(--cyan);
+    }
+
+    .mini-stat.gold strong { color: var(--gold); }
+    .mini-stat.streak strong { color: var(--purple); }
+
+    /* NAVIGATION */
+    .hud-nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 20px;
+      scrollbar-width: thin;
+    }
+
+    .hud-tab {
+      flex: 0 0 auto;
+      background: rgba(8, 19, 43, 0.8);
+      border: 1px solid rgba(0, 229, 255, 0.22);
+      color: var(--text-muted);
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.18s ease;
+    }
+
+    .hud-tab:hover {
+      border-color: var(--cyan);
+      color: var(--text-main);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+    }
+
+    .hud-tab.active {
+      background: linear-gradient(135deg, rgba(0, 229, 255, 0.22), rgba(168, 85, 247, 0.18));
+      border-color: var(--cyan);
+      color: #ffffff;
+      box-shadow: 0 0 18px rgba(0, 229, 255, 0.28);
+    }
+
+    /* CARDS & GRIDS */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .hud-card {
+      position: relative;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-hud);
+      box-shadow: var(--shadow-hud);
+      padding: 20px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hud-card.purple-card {
+      border-color: rgba(168, 85, 247, 0.45);
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.12);
+    }
+
+    .hud-card.danger-card {
+      border-color: rgba(244, 63, 94, 0.5);
+      box-shadow: 0 0 25px rgba(244, 63, 94, 0.12);
+    }
+
+    .section-tag {
+      margin: 0 0 4px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+    }
+
+    .section-tag.purple { color: #c084fc; }
+    .section-tag.gold { color: var(--gold); }
+    .section-tag.crimson { color: var(--crimson); }
+
+    .card-title {
+      margin: 0 0 10px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .muted { color: var(--text-muted); font-size: 13.5px; }
+
+    /* PROGRESS BARS */
+    .bar-wrap {
+      margin: 10px 0;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .bar-track {
+      height: 10px;
+      background: rgba(2, 8, 20, 0.95);
+      border: 1px solid rgba(0, 229, 255, 0.28);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--blue));
+      box-shadow: 0 0 12px var(--cyan);
+      transition: width 0.35s ease;
+    }
+
+    .bar-fill.hp { background: linear-gradient(90deg, #10b981, #34d399); box-shadow: 0 0 10px #10b981; }
+    .bar-fill.mp { background: linear-gradient(90deg, #3b82f6, #00e5ff); box-shadow: 0 0 10px #00e5ff; }
+    .bar-fill.fatigue { background: linear-gradient(90deg, #f59e0b, #f43f5e); box-shadow: 0 0 10px #f43f5e; }
+    .bar-fill.boss { background: linear-gradient(90deg, #dc2626, #f43f5e); box-shadow: 0 0 12px #f43f5e; }
+    .bar-fill.purple { background: linear-gradient(90deg, #7c3aed, #c084fc); box-shadow: 0 0 12px #a855f7; }
+
+    /* STAT ATTRIBUTES LIST */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat-box {
+      background: var(--bg-panel-light);
+      border: 1px solid rgba(0, 229, 255, 0.22);
+      padding: 11px 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stat-code {
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      color: var(--cyan);
+    }
+
+    .stat-name {
+      font-size: 13px;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .stat-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .stat-val-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-val {
+      font-size: 22px;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 10px var(--cyan-glow);
+    }
+
+    .plus-btn {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--gold);
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--gold);
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+    }
+
+    .plus-btn:hover {
+      background: var(--gold);
+      color: #000;
+    }
+
+    /* FORMS & INPUTS */
+    .field {
+      display: block;
+      margin-bottom: 13px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: var(--text-main);
+    }
+
+    .field small {
+      display: block;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      margin-top: 6px;
+      padding: 10px 12px;
+      background: var(--bg-input);
+      border: 1px solid rgba(0, 229, 255, 0.28);
+      color: var(--text-main);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--cyan);
+      cursor: pointer;
+    }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 16px;
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: 1px solid var(--cyan);
+      background: rgba(0, 229, 255, 0.14);
+      color: #fff;
+      transition: all 0.16s ease;
+    }
+
+    .btn:hover {
+      background: rgba(0, 229, 255, 0.28);
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-purple {
+      border-color: var(--purple);
+      background: rgba(168, 85, 247, 0.18);
+    }
+
+    .btn-purple:hover {
+      background: rgba(168, 85, 247, 0.35);
+      box-shadow: 0 0 16px var(--purple-glow);
+    }
+
+    .btn-gold {
+      border-color: var(--gold);
+      background: rgba(251, 191, 36, 0.16);
+      color: var(--gold);
+    }
+
+    .btn-gold:hover {
+      background: rgba(251, 191, 36, 0.3);
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.35);
+    }
+
+    .btn-danger {
+      border-color: var(--crimson);
+      background: rgba(244, 63, 94, 0.14);
+      color: #fda4af;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    /* QUEST ITEMS */
+    .quest-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: var(--bg-panel-light);
+      border: 1px solid rgba(0, 229, 255, 0.22);
+      transition: border-color 0.2s ease;
+    }
+
+    .quest-item.done {
+      border-color: rgba(16, 185, 129, 0.45);
+      background: rgba(16, 185, 129, 0.08);
+      opacity: 0.78;
+    }
+
+    .quest-title {
+      font-weight: 700;
+      font-size: 14.5px;
+      margin: 0 0 3px;
+    }
+
+    .quest-meta {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      color: var(--cyan);
+      background: rgba(0, 229, 255, 0.08);
+    }
+
+    .tag.gold { border-color: rgba(251, 191, 36, 0.4); color: var(--gold); background: rgba(251, 191, 36, 0.08); }
+    .tag.purple { border-color: rgba(168, 85, 247, 0.4); color: #d8b4fe; background: rgba(168, 85, 247, 0.1); }
+    .tag.crimson { border-color: rgba(244, 63, 94, 0.45); color: #fda4af; background: rgba(244, 63, 94, 0.1); }
+
+    /* RADAR SVG CONTAINER */
+    .radar-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .radar-legend {
+      display: flex;
+      gap: 18px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 6px;
+    }
+
+    /* VALUE CHIPS */
+    .chip-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 16px;
+    }
+
+    .chip {
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      border: 1px solid rgba(0, 229, 255, 0.25);
+      background: rgba(5, 14, 32, 0.8);
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .chip.selected {
+      border-color: var(--cyan);
+      background: rgba(0, 229, 255, 0.2);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+    }
+
+    /* SYSTEM TOAST / MODAL */
+    .sys-toast {
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      border: 1px solid var(--cyan);
+      background: linear-gradient(90deg, rgba(0, 229, 255, 0.18), rgba(8, 19, 43, 0.92));
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 18, 0.85);
+      backdrop-filter: blur(6px);
+      display: grid;
+      place-items: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-box {
+      max-width: 500px;
+      width: 100%;
+      background: linear-gradient(160deg, #07142e, #0c1029);
+      border: 2px solid var(--cyan);
+      box-shadow: 0 0 45px rgba(0, 229, 255, 0.4), inset 0 0 25px rgba(0, 229, 255, 0.12);
+      padding: 28px;
+      text-align: center;
+    }
+
+    .substep-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 10px;
+      margin: 5px 0;
+      background: rgba(3, 9, 22, 0.75);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+      font-size: 13.5px;
+    }
+
+    .substep-row.done {
+      text-decoration: line-through;
+      color: var(--text-muted);
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .manifesto-box {
+      padding: 18px;
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.14), rgba(0, 229, 255, 0.10));
+      border: 1px solid var(--purple);
+      box-shadow: 0 0 25px rgba(168, 85, 247, 0.2);
+      margin-top: 14px;
+    }
+
+    .footer-hud {
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(0, 229, 255, 0.2);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 860px) {
+      .grid-2, .grid-3, .stat-grid { grid-template-columns: 1fr; }
+      .hud-header { flex-direction: column; align-items: flex-start; }
+      .mini-stat { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP SYSTEM HUD -->
+    <header class="hud-header" id="hud-header"></header>
+
+    <!-- NAVIGATION -->
+    <nav class="hud-nav" id="hud-nav">
+      <button class="hud-tab active" data-tab="status">[STATUS & RADAR ŻYCIA]</button>
+      <button class="hud-tab" data-tab="quests">[QUESTY & LOCHY]</button>
+      <button class="hud-tab" data-tab="awakening">[PRZEBUDZENIE: KIM JESTEM]</button>
+      <button class="hud-tab" data-tab="skills">[UMIEJĘTNOŚCI & SKLEP]</button>
+      <button class="hud-tab" data-tab="logs">[LOGI ŁOWCY]</button>
+    </nav>
+
+    <!-- NOTIFICATION AREA -->
+    <div id="toast-area"></div>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-view"></main>
+
+    <!-- FOOTER / BACKUP -->
+    <footer class="footer-hud">
+      <div>
+        <strong>[SYSTEM ARCHIWIZACJI]</strong> Wszystkie dane są zapisywane lokalnie w Twojej przeglądarce. Możesz w każdej chwili pobrać plik zapisu lub wczytać go ponownie.
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-sm" id="btn-export">Eksportuj Zapis (.JSON)</button>
+        <label class="btn btn-sm btn-purple" style="cursor:pointer;">
+          Wczytaj Zapis
+          <input type="file" id="input-import" accept=".json" style="display:none;">
+        </label>
+        <button class="btn btn-sm btn-danger" id="btn-reset">Reset Systemu</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- LEVEL UP MODAL CONTAINER -->
+  <div id="modal-root"></div>
+
+  <script>
+    const STORAGE_KEY = "solo_system_awakening_v2";
+
+    const CORE_STATS = [
+      { id: "STR", name: "Siła i Ciało", desc: "Sprawność fizyczna, trening, ruch, dyscyplina ciała" },
+      { id: "VIT", name: "Witalność i Regeneracja", desc: "Sen, zdrowie, odżywianie, odporność na stres" },
+      { id: "INT", name: "Intelekt i Fachowość", desc: "Nauka, koncentracja, rozwój zawodowy, rozwiązywanie problemów" },
+      { id: "PER", name: "Percepcja i Samoświadomość", desc: "Uważność, rozumienie własnych emocji, intuicja i refleksja" },
+      { id: "CHA", name: "Charyzma i Relacje", desc: "Bliskość, komunikacja, stawianie granic, budowanie więzi" },
+      { id: "WLT", name: "Zasoby i Porządek", desc: "Finanse, organizacja otoczenia, zarządzanie czasem i bezpieczeństwo" }
+    ];
+
+    const LIFE_DIMENSIONS = [
+      { id: "body", name: "Kondycja i Ruch", stat: "STR", question: "Czy czujesz się silny/a, sprawny/a i dobrze obecny/a w swoim ciele?" },
+      { id: "health", name: "Sen i Zdrowie", stat: "VIT", question: "Czy wysypiasz się, dbasz o jedzenie i regenerację bez ciągłego wyczerpania?" },
+      { id: "mind", name: "Spokój i Emocje", stat: "PER", question: "Jak radzisz sobie z napięciem, lękiem i wewnętrznym krytykiem?" },
+      { id: "relationships", name: "Relacje i Bliskość", stat: "CHA", question: "Czy masz wokół siebie ludzi, przy których możesz być sobą bez udawania?" },
+      { id: "career", name: "Praca i Misja", stat: "INT", question: "Czy to, czym zajmujesz się na co dzień, daje Ci poczucie sensu i rozwoju?" },
+      { id: "finance", name: "Finanse i Wolność", stat: "WLT", question: "Czy masz kontrolę nad wydatkami, poduszkę finansową i spokój o jutro?" },
+      { id: "growth", name: "Wiedza i Ciekawość", stat: "INT", question: "Czy regularnie uczysz się rzeczy, które Cię naprawdę fascynują?" },
+      { id: "play", name: "Radość i Odpoczynek", stat: "VIT", question: "Czy potrafisz odpoczywać bez poczucia winy i cieszyć się czasem wolnym?" },
+      { id: "meaning", name: "Tożsamość i Sens", stat: "PER", question: "Czy żyjesz w zgodzie z własnymi wartościami, a nie cudzymi oczekiwaniami?" }
+    ];
+
+    const CORE_VALUES_LIST = [
+      "Wolność i Niezależność", "Głębokie Relacje", "Spokój Wewnętrzny", "Ciągły Rozwój",
+      "Zdrowie i Siła", "Bezpieczeństwo Finansowe", "Twórczość i Ekspresja", "Prawda i Autentyczność",
+      "Odwaga i Wyzwania", "Pomaganie Innym", "Mistrzostwo w Fachu", "Równowaga i Czas Wolny",
+      "Przygoda i Odkrywanie", "Rodzina i Dom", "Szacunek i Godność", "Duchowość i Sens",
+      "Dyscyplina i Charakter", "Uznanie i Wpływ"
+    ];
+
+    const ARCHETYPE_QUESTIONS = [
+      {
+        q: "1. Kiedy stajesz przed trudnym problemem w życiu, co robisz najpierw?",
+        options: [
+          { label: "Rozkładam go na czynniki pierwsze, tworzę plan i system działania.", type: "ARCHITECT" },
+          { label: "Wchodzę w działanie od razu — wolę przełamać opór siłą rozpędu.", type: "VANGUARD" },
+          { label: "Zastanawiam się, co to dla mnie znaczy i jak wpływa na moje wnętrze.", type: "SAGE" },
+          { label: "Szukam ludzi, rozmowy i wspólnego rozwiązania lub inspiracji.", type: "EMPATH" }
+        ]
+      },
+      {
+        q: "2. Co daje Ci największe poczucie satysfakcji pod koniec dnia?",
+        options: [
+          { label: "Widok odhaczonych zadań, porządek i poczucie kontroli nad przyszłością.", type: "ARCHITECT" },
+          { label: "Zmęczenie po ciężkim treningu lub pokonaniu trudnego wyzwania.", type: "VANGUARD" },
+          { label: "Zrozumienie czegoś głębokiego, nauka lub stworzenie czegoś własnego.", type: "SAGE" },
+          { label: "Poczucie bliskości, dobra rozmowa i świadomość, że komuś pomogłem/am.", type: "EMPATH" }
+        ]
+      },
+      {
+        q: "3. Jaka jest Twoja najczęstsza pułapka (Cień), gdy tracisz równowagę?",
+        options: [
+          { label: "Perfekcjonizm i paraliż analityczny — planuję zamiast żyć.", type: "ARCHITECT" },
+          { label: "Przemęczenie, wypalenie i branie na siebie zbyt wielu walk naraz.", type: "VANGUARD" },
+          { label: "Ucieczka w świat myśli, izolacja i odkładanie przyziemnych spraw.", type: "SAGE" },
+          { label: "Stawianie cudzych potrzeb ponad własne i zapominanie o sobie.", type: "EMPATH" }
+        ]
+      }
+    ];
+
+    const ARCHETYPE_DATA = {
+      ARCHITECT: {
+        className: "Architekt Systemów (Strateg Cieni)",
+        strength: "Zdolność widzenia długoterminowego, budowania struktur, nawyków i porządku tam, gdzie inni widzą chaos.",
+        trap: "Nadmierne analizowanie i odkładanie życia na moment, aż „wszystko będzie idealnie przygotowane”.",
+        advice: "Twój rozwój przyspiesza, gdy łączysz planowanie z szybkim, niedoskonałym eksperymentem w świecie rzeczywistym."
+      },
+      VANGUARD: {
+        className: "Szturmowiec Przełomu (Berserker Woli)",
+        strength: "Odwaga, energia do przełamywania stagnacji, zdolność do ciężkiej pracy i przekuwania oporu w siłę.",
+        trap: "Działanie na ślepo z przymusu, ignorowanie zmęczenia oraz mylenie ciągłej walki z poczuciem własnej wartości.",
+        advice: "Twoja prawdziwa moc budzi się, gdy do swojej siły dodasz refleksję (PER) oraz świadomą regenerację (VIT)."
+      },
+      SAGE: {
+        className: "Poszukiwacz Prawdy (Mędrzec Głębi)",
+        strength: "Głęboka samoświadomość, niezależność myślenia, kreatywność i dostrzeganie sensu pod powierzchnią zjawisk.",
+        trap: "Uciekanie w głowę, prokrastynacja przyziemnych obowiązków i poczucie wyobcowania.",
+        advice: "Potrzebujesz zakotwiczenia w ciele (STR) i małych, codziennych rytuałów, które przekładają Twoje myśli na materię."
+      },
+      EMPATH: {
+        className: "Strażnik Więzi (Paladyn Serca)",
+        strength: "Empatia, autentyczność, budowanie zaufania i wnoszenie ciepła oraz sensu w życie innych ludzi.",
+        trap: "Rozmywanie własnych granic, strach przed rozczarowaniem innych i zaniedbywanie własnych pragnień.",
+        advice: "Twoim najważniejszym zadaniem jest nauka mówienia „nie” cudzym oczekiwaniom, aby powiedzieć „tak” sobie."
+      }
+    };
+
+    function createDefaultState() {
+      return {
+        soundEnabled: true,
+        player: {
+          name: "Gracz",
+          title: "Przebudzony Poszukiwacz",
+          customClass: "",
+          archetypeAnswers: ["ARCHITECT", "SAGE", "ARCHITECT"],
+          level: 1,
+          exp: 0,
+          gold: 50,
+          freePoints: 3,
+          streak: 0,
+          lastCheckinDate: "",
+          hp: 80,
+          mp: 75,
+          fatigue: 25,
+          stats: { STR: 10, VIT: 10, INT: 10, PER: 10, CHA: 10, WLT: 10 }
+        },
+        dimensions: {
+          body: { current: 5, target: 8, note: "" },
+          health: { current: 5, target: 8, note: "" },
+          mind: { current: 5, target: 8, note: "" },
+          relationships: { current: 5, target: 8, note: "" },
+          career: { current: 5, target: 8, note: "" },
+          finance: { current: 5, target: 8, note: "" },
+          growth: { current: 5, target: 8, note: "" },
+          play: { current: 5, target: 8, note: "" },
+          meaning: { current: 5, target: 9, note: "" }
+        },
+        dailyQuests: [
+          { id: "dq1", title: "Ruch i przebudzenie ciała (min. 20 min treningu / spaceru / rozciągania)", stat: "STR", exp: 35, gold: 15, doneDates: [] },
+          { id: "dq2", title: "Regeneracja i higiena snu (nawodnienie + odłożenie ekranu przed snem)", stat: "VIT", exp: 30, gold: 10, doneDates: [] },
+          { id: "dq3", title: "Blok głębokiego skupienia (45 min na najważniejszy cel bez rozpraszaczy)", stat: "INT", exp: 40, gold: 20, doneDates: [] },
+          { id: "dq4", title: "Chwila prawdy ze sobą (5 min ciszy, oddechu lub wpis w Logach Łowcy)", stat: "PER", exp: 30, gold: 10, doneDates: [] },
+          { id: "dq5", title: "Porządek w otoczeniu i finansach (15 min ogarniania przestrzeni / spraw)", stat: "WLT", exp: 25, gold: 10, doneDates: [] }
+        ],
+        emergencyQuestDoneDate: "",
+        bossQuests: [
+          {
+            id: "boss1",
+            title: "Operacja: Odzyskanie Energii i Rytmu Dnia",
+            rank: "C-RANK",
+            dimension: "health",
+            why: "Chcę budzić się z energią zamiast zaczynać dzień w biegu i zmęczeniu.",
+            rewardExp: 180,
+            rewardGold: 100,
+            completed: false,
+            steps: [
+              { id: "s1", text: "Ustalić stałą godzinę kładzenia się spać przez 4 dni z rzędu", done: false },
+              { id: "s2", text: "Wypić szklankę wody i wyjść na światło dzienne rano", done: false },
+              { id: "s3", text: "Zrobić przegląd rzeczy, które kradną mi wieczorem najwięcej energii", done: false }
+            ]
+          }
+        ],
+        awakening: {
+          values: ["Wolność i Niezależność", "Spokój Wewnętrzny", "Ciągły Rozwój"],
+          flow: "",
+          talents: "",
+          deepDesire: "",
+          needRightNow: "",
+          antiVision: "",
+          idealTuesday: "",
+          shadowFear: "",
+          shadowLie: "",
+          boundaries: "",
+          creed: ""
+        },
+        skills: [
+          { id: "sk1", name: "Głęboka Koncentracja (Deep Work)", type: "AKTYWNA", stat: "INT", level: 1, xp: 20 },
+          { id: "sk2", name: "Opanowanie Emocji i Oddech", type: "PASYWNA", stat: "PER", level: 1, xp: 40 },
+          { id: "sk3", name: "Żelazna Konsekwencja", type: "PASYWNA", stat: "STR", level: 1, xp: 10 },
+          { id: "sk4", name: "Asertywność i Stawianie Granic", type: "AKTYWNA", stat: "CHA", level: 1, xp: 0 }
+        ],
+        rewards: [
+          { id: "rw1", title: "1 godzina bezkarnej rozrywki (gry / serial / relaks)", cost: 50 },
+          { id: "rw2", title: "Ulubiona kawa / posiłek na mieście", cost: 120 },
+          { id: "rw3", title: "Zakup książki, kursu lub rzeczy związanej z pasją", cost: 300 }
+        ],
+        logs: []
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return createDefaultState();
+        const parsed = JSON.parse(raw);
+        const def = createDefaultState();
+        return {
+          ...def,
+          ...parsed,
+          player: { ...def.player, ...(parsed.player || {}), stats: { ...def.player.stats, ...(parsed.player?.stats || {}) } },
+          dimensions: { ...def.dimensions, ...(parsed.dimensions || {}) },
+          awakening: { ...def.awakening, ...(parsed.awakening || {}) },
+          dailyQuests: Array.isArray(parsed.dailyQuests) ? parsed.dailyQuests : def.dailyQuests,
+          bossQuests: Array.isArray(parsed.bossQuests) ? parsed.bossQuests : def.bossQuests,
+          skills: Array.isArray(parsed.skills) ? parsed.skills : def.skills,
+          rewards: Array.isArray(parsed.rewards) ? parsed.rewards : def.rewards,
+          logs: Array.isArray(parsed.logs) ? parsed.logs : def.logs
+        };
+      } catch (e) {
+        return createDefaultState();
+      }
+    }
+
+    let state = loadState();
+    let activeTab = "status";
+    let toastText = "";
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function todayISO() {
+      const d = new Date();
+      const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    }
+
+    function esc(str) {
+      return String(str ?? "").replace(/[&<>"']/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    // WEB AUDIO SYNTHESIZER (Solo Leveling HUD Chimes)
+    let audioCtx = null;
+    function playSystemSound(type = "click") {
+      if (!state.soundEnabled) return;
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioCtx) audioCtx = new AudioContextClass();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        const notes = type === "levelup"
+          ? [440, 554.37, 659.25, 880, 1108.73]
+          : type === "quest"
+          ? [523.25, 659.25, 783.99]
+          : [587.33];
+
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type === "levelup" ? "triangle" : "sine";
+          osc.frequency.setValueAtTime(freq, now + idx * 0.075);
+
+          gain.gain.setValueAtTime(0.08, now + idx * 0.075);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.075 + 0.24);
+
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.075);
+          osc.stop(now + idx * 0.075 + 0.25);
+        });
+      } catch (e) {}
+    }
+
+    function expForNextLevel(lvl) {
+      return 100 + (lvl - 1) * 45;
+    }
+
+    function getHunterRank(lvl) {
+      if (lvl >= 30) return { label: "MONARCHA CIENI", cls: "monarch" };
+      if (lvl >= 20) return { label: "S-RANK", cls: "s-rank" };
+      if (lvl >= 14) return { label: "A-RANK", cls: "" };
+      if (lvl >= 9) return { label: "B-RANK", cls: "" };
+      if (lvl >= 5) return { label: "C-RANK", cls: "" };
+      if (lvl >= 3) return { label: "D-RANK", cls: "" };
+      return { label: "E-RANK", cls: "" };
+    }
+
+    function computeDominantArchetype() {
+      const counts = { ARCHITECT: 0, VANGUARD: 0, SAGE: 0, EMPATH: 0 };
+      (state.player.archetypeAnswers || []).forEach(ans => {
+        if (counts[ans] !== undefined) counts[ans]++;
+      });
+      let best = "ARCHITECT";
+      Object.keys(counts).forEach(k => {
+        if (counts[k] > counts[best]) best = k;
+      });
+      return ARCHETYPE_DATA[best];
+    }
+
+    function grantRewards({ exp = 0, gold = 0, stat = null, statAmount = 1, reason = "" }) {
+      state.player.exp += exp;
+      state.player.gold += gold;
+      if (stat && state.player.stats[stat] !== undefined) {
+        state.player.stats[stat] += statAmount;
+      }
+
+      let leveledUp = false;
+      while (state.player.exp >= expForNextLevel(state.player.level)) {
+        state.player.exp -= expForNextLevel(state.player.level);
+        state.player.level += 1;
+        state.player.freePoints += 3;
+        leveledUp = true;
+      }
+
+      saveState();
+
+      if (leveledUp) {
+        playSystemSound("levelup");
+        showLevelUpModal();
+      } else {
+        playSystemSound("quest");
+      }
+
+      toastText = `[SYSTEM] ${reason} (+${exp} EXP, +${gold} Złota${stat ? `, +${statAmount} ${stat}` : ""})`;
+      render();
+    }
+
+    function showLevelUpModal() {
+      const rank = getHunterRank(state.player.level);
+      const modalRoot = document.getElementById("modal-root");
+      modalRoot.innerHTML = `
+        <div class="modal-backdrop" id="close-modal-backdrop">
+          <div class="modal-box">
+            <p class="section-tag">[ ALARM SYSTEMOWY ]</p>
+            <h2 style="font-size:28px; margin:6px 0; color:var(--cyan); text-shadow:0 0 16px var(--cyan);">
+              AWANS NA WYŻSZY POZIOM!
+            </h2>
+            <p style="font-size:18px; font-weight:800; margin:12px 0;">
+              Osiągnięto Poziom <span style="color:var(--gold);">${state.player.level}</span> (${rank.label})
+            </p>
+            <p class="muted" style="margin-bottom:20px;">
+              Otrzymujesz <strong>+3 Wolne Punkty Statystyk</strong> do rozdania w oknie Statusu. Twoje granice zostały przesunięte.
+            </p>
+            <button class="btn" id="btn-close-modal">Potwierdź [ENTER]</button>
+          </div>
+        </div>
+      `;
+      document.getElementById("btn-close-modal").addEventListener("click", () => {
+        modalRoot.innerHTML = "";
+      });
+    }
+
+    function updateStreakIfNeeded() {
+      const today = todayISO();
+      if (state.player.lastCheckinDate === today) return;
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yISO = new Date(yesterday.getTime() - yesterday.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+      if (state.player.lastCheckinDate === yISO) {
+        state.player.streak += 1;
+      } else {
+        state.player.streak = 1;
+      }
+      state.player.lastCheckinDate = today;
+    }
+
+    // RENDER HEADER
+    function renderHeader() {
+      const p = state.player;
+      const rank = getHunterRank(p.level);
+      const nextExp = expForNextLevel(p.level);
+      const expPct = Math.min(100, Math.round((p.exp / nextExp) * 100));
+      const arch = computeDominantArchetype();
+      const playerClass = p.customClass.trim() || arch.className;
+
+      document.getElementById("hud-header").innerHTML = `
+        <div class="sys-title-group">
+          <div class="sys-crest">◈</div>
+          <div>
+            <p class="sys-label">[ SYSTEM ROZWOJU I SAMOŚWIADOMOŚCI ]</p>
+            <div class="sys-player-line">
+              <span>${esc(p.name)}</span>
+              <span class="rank-badge ${rank.cls}">${rank.label}</span>
+              <span class="tag purple">POZIOM ${p.level}</span>
+            </div>
+            <div class="muted" style="font-size:12.5px; margin-top:2px;">
+              Klasa: <strong style="color:#fff;">${esc(playerClass)}</strong> · Tytuł: <em>${esc(p.title)}</em>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-quickbars">
+          <div style="min-width:170px;">
+            <div class="bar-label">
+              <span>EXP</span>
+              <span>${p.exp} / ${nextExp} (${expPct}%)</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${expPct}%"></div>
+            </div>
+          </div>
+
+          <div class="mini-stat gold">
+            <span>Złoto</span>
+            <strong>◈ ${p.gold}</strong>
+          </div>
+
+          <div class="mini-stat streak">
+            <span>Seria Dni</span>
+            <strong>🔥 ${p.streak}</strong>
+          </div>
+
+          <button class="btn btn-sm" id="btn-toggle-sound" title="Włącz/Wyłącz dźwięki Systemu">
+            Dźwięk: ${state.soundEnabled ? "ON" : "OFF"}
+          </button>
+        </div>
+      `;
+
+      document.getElementById("btn-toggle-sound").addEventListener("click", () => {
+        state.soundEnabled = !state.soundEnabled;
+        saveState();
+        if (state.soundEnabled) playSystemSound("click");
+        renderHeader();
+      });
+    }
+
+    // SVG RADAR CHART GENERATOR (9 LIFE DIMENSIONS)
+    function buildRadarChartSVG() {
+      const size = 340;
+      const cx = size / 2;
+      const cy = size / 2;
+      const maxR = 115;
+      const count = LIFE_DIMENSIONS.length;
+
+      function pointFor(index, value10) {
+        const angle = (Math.PI * 2 * index) / count - Math.PI / 2;
+        const r = (value10 / 10) * maxR;
+        return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+      }
+
+      // Grid rings (2, 4, 6, 8, 10)
+      const rings = [2, 4, 6, 8, 10].map(level => {
+        const pts = LIFE_DIMENSIONS.map((_, i) => pointFor(i, level).join(",")).join(" ");
+        return `<polygon points="${pts}" fill="none" stroke="rgba(0, 229, 255, 0.16)" stroke-width="1"/>`;
+      }).join("");
+
+      // Axes & Labels
+      const axes = LIFE_DIMENSIONS.map((dim, i) => {
+        const [xEnd, yEnd] = pointFor(i, 10);
+        const [xLbl, yLbl] = pointFor(i, 12.3);
+        const score = state.dimensions[dim.id]?.current ?? 5;
+        return `
+          <line x1="${cx}" y1="${cy}" x2="${xEnd}" y2="${yEnd}" stroke="rgba(0, 229, 255, 0.2)" stroke-width="1"/>
+          <text x="${xLbl}" y="${yLbl}" fill="#bfe6ff" font-size="10" font-weight="700" text-anchor="middle" dominant-baseline="middle">
+            ${esc(dim.name)} (${score})
+          </text>
+        `;
+      }).join("");
+
+      const targetPts = LIFE_DIMENSIONS.map((dim, i) =>
+        pointFor(i, state.dimensions[dim.id]?.target ?? 8).join(",")
+      ).join(" ");
+
+      const currentPts = LIFE_DIMENSIONS.map((dim, i) =>
+        pointFor(i, state.dimensions[dim.id]?.current ?? 5).join(",")
+      ).join(" ");
+
+      return `
+        <svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:360px; overflow:visible;">
+          ${rings}
+          ${axes}
+          <polygon points="${targetPts}" fill="rgba(168, 85, 247, 0.12)" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <polygon points="${currentPts}" fill="rgba(0, 229, 255, 0.25)" stroke="#00e5ff" stroke-width="2.2"/>
+        </svg>
+      `;
+    }
+
+    // TAB 1: STATUS & LIFE RADAR
+    function renderStatusTab() {
+      const p = state.player;
+      const dims = LIFE_DIMENSIONS.map(d => ({
+        ...d,
+        current: state.dimensions[d.id]?.current ?? 5,
+        target: state.dimensions[d.id]?.target ?? 8,
+        note: state.dimensions[d.id]?.note ?? ""
+      }));
+
+      const weakestDim = [...dims].sort((a, b) => (a.current - a.target) - (b.current - b.target))[0];
+      const avgLifeScore = (dims.reduce((s, d) => s + Number(d.current), 0) / dims.length).toFixed(1);
+
+      const statsHtml = CORE_STATS.map(st => `
+        <div class="stat-box">
+          <div>
+            <div class="stat-code">[${st.id}] ${esc(st.name)}</div>
+            <div class="stat-desc">${esc(st.desc)}</div>
+          </div>
+          <div class="stat-val-group">
+            <span class="stat-val">${p.stats[st.id]}</span>
+            ${p.freePoints > 0 ? `<button class="plus-btn" data-alloc="${st.id}" title="Dodaj punkt">+</button>` : ""}
+          </div>
+        </div>
+      `).join("");
+
+      const dimSlidersHtml = dims.map(d => `
+        <div style="padding:12px 0; border-bottom:1px solid rgba(0,229,255,0.12);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <strong>${esc(d.name)} <span class="tag">${d.stat}</span></strong>
+            <span style="font-size:12.5px; color:var(--cyan); font-weight:800;">
+              Teraz: <output id="cur-out-${d.id}">${d.current}</output>/10 · Cel: <output id="trg-out-${d.id}">${d.target}</output>/10
+            </span>
+          </div>
+          <p class="muted" style="margin:3px 0 8px; font-size:12.5px;">${esc(d.question)}</p>
+          <div class="grid-2" style="gap:10px;">
+            <label style="font-size:11.5px; color:var(--text-muted);">
+              Stan obecny (1-10)
+              <input type="range" min="1" max="10" value="${d.current}" data-dim-cur="${d.id}">
+            </label>
+            <label style="font-size:11.5px; color:var(--text-muted);">
+              Twój cel (1-10)
+              <input type="range" min="1" max="10" value="${d.target}" data-dim-trg="${d.id}">
+            </label>
+          </div>
+          <input type="text" placeholder="Czego dokładnie brakuje w tym obszarze lub jaki jest następny krok?" value="${esc(d.note)}" data-dim-note="${d.id}" style="margin-top:6px; font-size:12.5px; padding:7px 10px;">
+        </div>
+      `).join("");
+
+      return `
+        <div class="grid-2">
+          <!-- LEFT: PLAYER STATUS WINDOW -->
+          <section class="hud-card">
+            <p class="section-tag">[ OKNO STATUSU GRACZA ]</p>
+            <h2 class="card-title">Parametry & Atrybuty Główne</h2>
+
+            <!-- VITALITY BARS -->
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>HP (Energia Fizyczna i Ciało)</span>
+                <span id="hp-lbl">${p.hp}%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill hp" id="hp-bar" style="width:${p.hp}%"></div></div>
+              <input type="range" min="0" max="100" value="${p.hp}" id="slider-hp">
+            </div>
+
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>MP (Skupienie i Energia Mentalna)</span>
+                <span id="mp-lbl">${p.mp}%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill mp" id="mp-bar" style="width:${p.mp}%"></div></div>
+              <input type="range" min="0" max="100" value="${p.mp}" id="slider-mp">
+            </div>
+
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>FATIGUE (Poziom Przeciążenia / Stresu)</span>
+                <span id="fat-lbl">${p.fatigue}%</span>
+              </div>
+              <div class="bar-track"><div class="bar-fill fatigue" id="fat-bar" style="width:${p.fatigue}%"></div></div>
+              <input type="range" min="0" max="100" value="${p.fatigue}" id="slider-fatigue">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+              <span class="section-tag">ATRYBUTY SYSTEMOWE</span>
+              <span class="tag gold">Wolne Punkty: ${p.freePoints}</span>
+            </div>
+
+            <div class="stat-grid">
+              ${statsHtml}
+            </div>
+
+            <form id="form-player-identity" style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(0,229,255,0.18);">
+              <div class="grid-2" style="gap:10px;">
+                <label class="field">
+                  Imię / Pseudonim Gracza
+                  <input type="text" name="name" value="${esc(p.name)}" maxlength="40">
+                </label>
+                <label class="field">
+                  Aktywny Tytuł
+                  <input type="text" name="title" value="${esc(p.title)}" maxlength="50">
+                </label>
+              </div>
+              <label class="field">
+                Własna Klasa (opcjonalnie — zastępuje automatyczny Archetyp)
+                <input type="text" name="customClass" value="${esc(p.customClass)}" placeholder="np. Twórca Niezależny / Strażnik Równowagi">
+              </label>
+              <button class="btn btn-sm" type="submit">Zapisz Dane Gracza</button>
+            </form>
+          </section>
+
+          <!-- RIGHT: RADAR & SYSTEM DIAGNOSIS -->
+          <section class="hud-card">
+            <p class="section-tag">[ MATRYCA 9 WYMIARÓW ŻYCIA ]</p>
+            <h2 class="card-title">Radar Równowagi (${avgLifeScore}/10)</h2>
+            <p class="muted">
+              Niebieski kształt to Twoje życie dzisiaj. Fioletowa przerywana linia to życie, jakiego pragniesz. Im większa luka, tym ważniejszy kierunek rozwoju.
+            </p>
+
+            <div class="radar-box" id="radar-container">
+              ${buildRadarChartSVG()}
+              <div class="radar-legend">
+                <span><i class="legend-dot" style="background:#00e5ff;"></i>Stan Obecny</span>
+                <span><i class="legend-dot" style="background:#a855f7;"></i>Twój Cel</span>
+              </div>
+            </div>
+
+            <div class="manifesto-box">
+              <p class="section-tag purple">[ DIAGNOZA SYSTEMU ]</p>
+              <p style="margin:4px 0 0; font-size:14px;">
+                Największy potencjał przebudzenia znajduje się obecnie w obszarze:
+                <strong style="color:var(--cyan);">${esc(weakestDim.name)}</strong>
+                (obecnie ${weakestDim.current}/10, cel: ${weakestDim.target}/10).
+                ${weakestDim.note ? `<br>Twoja wskazówka: <em>„${esc(weakestDim.note)}”</em>` : ""}
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <!-- DETAILED 9 DIMENSIONS DIAGNOSTIC -->
+        <section class="hud-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <p class="section-tag">[ SZCZEGÓŁOWA KALIBRACJA WYMIARÓW ]</p>
+              <h3 class="card-title" style="margin-bottom:4px;">Oceń każdy wymiar swojego życia i określ, czego w nim chcesz</h3>
+            </div>
+            <button class="btn" id="btn-save-dimensions">Zapisz Kalibrację (+15 EXP)</button>
+          </div>
+          <div style="margin-top:10px;">
+            ${dimSlidersHtml}
+          </div>
+        </section>
+      `;
+    }
+
+    // TAB 2: QUESTS & DUNGEONS
+    function renderQuestsTab() {
+      const today = todayISO();
+      const emergencyDone = state.emergencyQuestDoneDate === today;
+
+      const dailyHtml = state.dailyQuests.map(q => {
+        const isDone = (q.doneDates || []).includes(today);
+        return `
+          <div class="quest-item ${isDone ? "done" : ""}">
+            <div>
+              <p class="quest-title">${esc(q.title)}</p>
+              <div class="quest-meta">
+                <span class="tag">+1 ${q.stat}</span>
+                <span class="tag">+${q.exp} EXP</span>
+                <span class="tag gold">+${q.gold} Złota</span>
+                <span>Wykonano łącznie: ${(q.doneDates || []).length}x</span>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn btn-sm ${isDone ? "btn-purple" : ""}" data-toggle-daily="${esc(q.id)}">
+                ${isDone ? "✓ Wykonano" : "Wykonaj"}
+              </button>
+              <button class="btn btn-sm btn-danger" data-del-daily="${esc(q.id)}" title="Usuń misję">✕</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const bossesHtml = state.bossQuests.map(b => {
+        const totalSteps = b.steps.length || 1;
+        const doneSteps = b.steps.filter(s => s.done).length;
+        const bossHpPct = Math.max(0, Math.round(((totalSteps - doneSteps) / totalSteps) * 100));
+        const dimObj = LIFE_DIMENSIONS.find(d => d.id === b.dimension);
+
+        const stepsHtml = b.steps.map(st => `
+          <div class="substep-row ${st.done ? "done" : ""}">
+            <input type="checkbox" ${st.done ? "checked" : ""} data-boss-id="${esc(b.id)}" data-step-id="${esc(st.id)}">
+            <span style="flex:1;">${esc(st.text)}</span>
+          </div>
+        `).join("");
+
+        return `
+          <div class="hud-card ${b.completed ? "" : "danger-card"}" style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+              <div>
+                <span class="tag crimson">${esc(b.rank)}</span>
+                <span class="tag">${esc(dimObj ? dimObj.name : "Cel Główny")}</span>
+                <h4 style="margin:8px 0 4px; font-size:17px;">${esc(b.title)}</h4>
+              </div>
+              <button class="btn btn-sm btn-danger" data-del-boss="${esc(b.id)}">Usuń</button>
+            </div>
+
+            ${b.why ? `<p class="muted" style="margin:4px 0 10px;"><strong>Dlaczego o to walczę:</strong> ${esc(b.why)}</p>` : ""}
+
+            <div class="bar-wrap">
+              <div class="bar-label">
+                <span>HP BOSSA (Opór przed zmianą)</span>
+                <span>${bossHpPct}% (${totalSteps - doneSteps}/${totalSteps} etapów pozostało)</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill boss" style="width:${bossHpPct}%"></div>
+              </div>
+            </div>
+
+            <div style="margin:12px 0;">
+              ${stepsHtml}
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px;">
+              <span class="muted">Nagroda za oczyszczenie lochu: <strong>+${b.rewardExp} EXP, +${b.rewardGold} Złota</strong></span>
+              ${
+                b.completed
+                  ? `<span class="tag" style="border-color:var(--emerald); color:var(--emerald);">✓ LOCH OCZYSZCZONY</span>`
+                  : doneSteps === totalSteps
+                  ? `<button class="btn btn-gold" data-claim-boss="${esc(b.id)}">Odbierz Nagrodę za Pokonanie Bossa!</button>`
+                  : `<span class="muted">Odhacz wszystkie etapy, aby pokonać Bossa</span>`
+              }
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const statOptions = CORE_STATS.map(s => `<option value="${s.id}">${s.id} — ${esc(s.name)}</option>`).join("");
+      const dimOptions = LIFE_DIMENSIONS.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join("");
+
+      return `
+        <div class="grid-2">
+          <!-- DAILY QUESTS -->
+          <section class="hud-card">
+            <p class="section-tag">[ CODZIENNY TRENING GRACZA ]</p>
+            <h2 class="card-title">Misje Codzienne (${today})</h2>
+            <p class="muted">
+              Codzienne nawyki budują Twoje statystyki. Za każde wykonanie otrzymujesz EXP, Złoto oraz +1 punkt do powiązanego atrybutu.
+            </p>
+
+            <div style="margin:14px 0;">
+              ${dailyHtml}
+            </div>
+
+            <!-- EMERGENCY / PENALTY ZONE SURVIVAL QUEST -->
+            <div class="hud-card purple-card" style="margin:16px 0 0; padding:15px;">
+              <p class="section-tag purple">[ STREFA PRZETRWANIA — GDY BRAK CI SIŁ ]</p>
+              <h4 style="margin:4px 0 6px;">Protokół Minimum (Dzień Niskiej Energii)</h4>
+              <p class="muted" style="margin:0 0 10px;">
+                Masz dziś bardzo ciężki dzień? Zamiast się poddawać i porzucać System, wykonaj <strong>jedną małą rzecz z życzliwością dla siebie</strong> (np. 5 minut spaceru, prysznic, kubek wody, spokojny oddech) i utrzymaj serię.
+              </p>
+              <button class="btn btn-purple btn-sm" id="btn-emergency-quest" ${emergencyDone ? "disabled" : ""}>
+                ${emergencyDone ? "✓ Protokół Przetrwania aktywowano dzisiaj" : "Aktywuj Protokół Przetrwania (+20 EXP, +1 VIT)"}
+              </button>
+            </div>
+
+            <form id="form-add-daily" style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(0,229,255,0.2);">
+              <h4 style="margin:0 0 10px;">Dodaj własną Misję Codzienną</h4>
+              <label class="field">
+                Treść nawyku / misji
+                <input type="text" name="title" required placeholder="np. 20 minut nauki języka obcego">
+              </label>
+              <div class="grid-2" style="gap:10px;">
+                <label class="field">
+                  Powiązana Statystyka
+                  <select name="stat">${statOptions}</select>
+                </label>
+                <label class="field">
+                  Nagroda EXP
+                  <input type="number" name="exp" value="30" min="10" max="100">
+                </label>
+              </div>
+              <button class="btn btn-sm" type="submit">+ Dodaj Misję Codzienną</button>
+            </form>
+          </section>
+
+          <!-- BOSS RAIDS / DUNGEONS -->
+          <section class="hud-card">
+            <p class="section-tag crimson">[ LOCHY I BOSSOWIE — CELE DŁUGOTERMINOWE ]</p>
+            <h2 class="card-title">Główne Questy Życiowe</h2>
+            <p class="muted">
+              Zamień swoje duże pragnienia w „Bossów”. Podziel cel na małe etapy — każdy odhaczony etap osłabia pasek HP problemu!
+            </p>
+
+            <div style="margin:14px 0;">
+              ${bossesHtml || `<p class="muted">Brak aktywnych Lochów. Stwórz swój pierwszy wielki cel poniżej.</p>`}
+            </div>
+
+            <form id="form-add-boss" style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(0,229,255,0.2);">
+              <h4 style="margin:0 0 10px;">Otwórz Nowy Loch (Dodaj Cel Główny)</h4>
+              <label class="field">
+                Nazwa Celu / Bossa
+                <input type="text" name="title" required placeholder="np. Zbudować poduszkę finansową 5000 zł / Zmienić pracę">
+              </label>
+              <div class="grid-2" style="gap:10px;">
+                <label class="field">
+                  Ranga Trudności
+                  <select name="rank">
+                    <option value="E-RANK">E-RANK (Małe wyzwanie)</option>
+                    <option value="D-RANK">D-RANK (Kilka dni)</option>
+                    <option value="C-RANK" selected>C-RANK (Kilka tygodni)</option>
+                    <option value="B-RANK">B-RANK (Poważny projekt)</option>
+                    <option value="A-RANK">A-RANK (Przełom życiowy)</option>
+                    <option value="S-RANK">S-RANK (Transformacja)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  Wymiar Życia
+                  <select name="dimension">${dimOptions}</select>
+                </label>
+              </div>
+              <label class="field">
+                Dlaczego ten cel jest dla mnie naprawdę ważny?
+                <input type="text" name="why" placeholder="Co zmieni się w moim życiu, gdy to osiągnę?">
+              </label>
+              <label class="field">
+                Etapy pokonania Bossa (wpisz każdy krok w nowej linii)
+                <textarea name="steps" required placeholder="Krok 1: Zrobić dokładny plan&#10;Krok 2: Wykonać pierwsze podejście&#10;Krok 3: Dokończyć i podsumować"></textarea>
+              </label>
+              <button class="btn" type="submit">Stwórz Loch (Boss Raid)</button>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+
+    // TAB 3: AWAKENING (DEEP SELF-DISCOVERY)
+    function renderAwakeningTab() {
+      const aw = state.awakening;
+      const arch = computeDominantArchetype();
+
+      const archetypeQuizHtml = ARCHETYPE_QUESTIONS.map((item, qIdx) => {
+        const currentAns = state.player.archetypeAnswers[qIdx] || "ARCHITECT";
+        const opts = item.options.map(o => `
+          <label style="display:flex; align-items:flex-start; gap:8px; padding:7px 10px; background:rgba(4,12,28,0.8); border:1px solid ${currentAns === o.type ? "var(--cyan)" : "rgba(0,229,255,0.15)"}; margin-bottom:6px; cursor:pointer; font-size:13px;">
+            <input type="radio" name="arch-q-${qIdx}" value="${o.type}" ${currentAns === o.type ? "checked" : ""}>
+            <span>${esc(o.label)}</span>
+          </label>
+        `).join("");
+        return `
+          <div style="margin-bottom:14px;">
+            <p style="font-weight:700; margin:0 0 6px; font-size:13.5px;">${esc(item.q)}</p>
+            ${opts}
+          </div>
+        `;
+      }).join("");
+
+      const valuesChipsHtml = CORE_VALUES_LIST.map(val => {
+        const selected = (aw.values || []).includes(val);
+        return `<span class="chip ${selected ? "selected" : ""}" data-val-chip="${esc(val)}">${esc(val)}</span>`;
+      }).join("");
+
+      return `
+        <!-- MANIFESTO / SUMMARY CARD -->
+        <section class="hud-card purple-card">
+          <p class="section-tag purple">[ KODEKS TOŻSAMOŚCI GRACZA — SYNTEZA KIM JESTEŚ I CZEGO CHCESZ ]</p>
+          <h2 class="card-title">Twoje Przebudzenie</h2>
+          <div class="grid-2" style="gap:16px;">
+            <div>
+              <p class="muted" style="margin-top:0;">
+                <strong>Rozpoznana Klasa / Archetyp:</strong> <span style="color:var(--cyan); font-weight:800;">${esc(arch.className)}</span><br>
+                <strong>Naturalna Siła:</strong> ${esc(arch.strength)}<br>
+                <strong>Ukryta Pułapka (Cień):</strong> ${esc(arch.trap)}<br>
+                <strong>Wskazówka Systemu:</strong> ${esc(arch.advice)}
+              </p>
+            </div>
+            <div class="manifesto-box" style="margin-top:0;">
+              <p class="section-tag gold">RDZEŃ TWOJEJ DROGI</p>
+              <p style="margin:4px 0; font-size:13.5px;">
+                <strong>Moje Wartości:</strong> ${(aw.values || []).length ? esc(aw.values.join(" · ")) : "Wybierz poniżej"}<br>
+                <strong>Czego naprawdę chcę:</strong> ${aw.deepDesire ? esc(aw.deepDesire) : "<em>Uzupełnij w sekcji poniżej...</em>"}<br>
+                <strong>Moje Hasło / Credo:</strong> ${aw.creed ? `„${esc(aw.creed)}”` : "<em>Zdefiniuj swoje credo...</em>"}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div class="grid-2">
+          <!-- ARCHETYPE TEST & CORE VALUES -->
+          <section class="hud-card">
+            <p class="section-tag">[ KROK 1: ROZPOZNANIE NATURY GRACZA ]</p>
+            <h3 class="card-title">Test Klasy & Kodeks Wartości</h3>
+            <p class="muted">Odpowiedz szczerze, jak działasz naprawdę — nie jak „wypadałoby” działać.</p>
+
+            <div id="archetype-quiz-box">
+              ${archetypeQuizHtml}
+            </div>
+
+            <hr style="border:0; border-top:1px solid rgba(0,229,255,0.2); margin:18px 0;">
+
+            <p class="section-tag">[ FUNDAMENTALNE WARTOŚCI ]</p>
+            <p class="muted" style="margin:4px 0 8px;">
+              Kliknij i wybierz od 3 do 5 wartości, które są dla Ciebie najważniejsze w życiu (wybrano: ${(aw.values || []).length}):
+            </p>
+            <div class="chip-wrap" id="values-chip-container">
+              ${valuesChipsHtml}
+            </div>
+          </section>
+
+          <!-- IKIGAI / WHAT I TRULY WANT -->
+          <section class="hud-card">
+            <p class="section-tag">[ KROK 2: ODKRYCIE CZEGO NAPRAWDĘ CHCESZ ]</p>
+            <h3 class="card-title">4 Filary Sensu & Wizja Przyszłości</h3>
+
+            <form id="form-awakening">
+              <label class="field">
+                1. Kiedy zapominasz o upływie czasu i czujesz, że żyjesz (Stan Flow)?
+                <small>Co wtedy robisz, z kim jesteś, jakiego rodzaju wyzwania rozwiązujesz?</small>
+                <textarea name="flow" placeholder="np. Kiedy tworzę coś od zera, kiedy uczę się jak działa świat, kiedy prowadzę głęboką rozmowę...">${esc(aw.flow)}</textarea>
+              </label>
+
+              <label class="field">
+                2. Moje naturalne talenty i mocne strony
+                <small>Z czym ludzie do Ciebie przychodzą? Co przychodzi Ci łatwiej niż innym?</small>
+                <textarea name="talents" placeholder="np. Potrafię zachować spokój w kryzysie, umiem tłumaczyć trudne rzeczy, szybko łączę fakty...">${esc(aw.talents)}</textarea>
+              </label>
+
+              <label class="field">
+                3. Czego tak naprawdę chcę od życia (gdy odrzucę cudze oczekiwania)?
+                <small>Gdyby nikt Cię nie oceniał i nie musiał(a)byś nikomu nic udowadniać — czego pragniesz?</small>
+                <textarea name="deepDesire" placeholder="np. Chcę spokojnego poranka, niezależności finansowej, zdrowego ciała i jednej bliskiej relacji opartej na prawdzie...">${esc(aw.deepDesire)}</textarea>
+              </label>
+
+              <label class="field">
+                4. ANTY-WIZJA (Ostrzeżenie Systemu): Jak będzie wyglądać moje życie za 5 lat, jeśli NIC nie zmienię i ulegnę dawnym nawykom?
+                <small>Nazwij szczerze koszt stania w miejscu.</small>
+                <textarea name="antiVision" placeholder="Opisz dzień za 5 lat bez żadnych zmian — to paliwo, by wyjść z E-Ranku.">${esc(aw.antiVision)}</textarea>
+              </label>
+
+              <label class="field">
+                5. WIZJA MONARCHY: Jak wygląda mój idealny, ale realistyczny wtorek za 3 lata?
+                <small>O której wstajesz? Jak się czujesz w ciele? Nad czym pracujesz? Jak spędzasz wieczór?</small>
+                <textarea name="idealTuesday" placeholder="Opisz swój zwykły, dobry dzień z przyszłości...">${esc(aw.idealTuesday)}</textarea>
+              </label>
+
+              <label class="field">
+                6. EKSTRAKCJA CIENIA: Jaki lęk lub wymówka najczęściej mnie zatrzymuje?
+                <small>Czego się boisz (porażki, oceny, sukcesu, zmęczenia) i jakie zdanie powtarza Twój wewnętrzny krytyk?</small>
+                <textarea name="shadowFear" placeholder="np. Boję się, że jeśli naprawdę się postaram i mi nie wyjdzie, to znaczy, że jestem niewystarczający/a...">${esc(aw.shadowFear)}</textarea>
+              </label>
+
+              <label class="field">
+                7. Czego już NIE CHCĘ tolerować w swoim życiu (Moje Granice)?
+                <textarea name="boundaries" placeholder="np. Bezsensownego scrollowania do nocy, relacji jednostronnych, odkładania zdrowia na później...">${esc(aw.boundaries)}</textarea>
+              </label>
+
+              <label class="field">
+                8. Moje osobiste Credo / Deklaracja Gracza (1 zdanie mocy)
+                <input type="text" name="creed" value="${esc(aw.creed)}" placeholder="np. Codziennie wybieram odwagę i małe kroki zamiast perfekcyjnych wymówek.">
+              </label>
+
+              <button class="btn btn-purple" type="submit">Zapisz Przebudzenie (+40 EXP, +2 PER)</button>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+
+    // TAB 4: SKILLS & REWARDS SHOP
+    function renderSkillsTab() {
+      const skillsHtml = state.skills.map(sk => {
+        const pct = Math.min(100, sk.xp);
+        return `
+          <div class="quest-item">
+            <div style="flex:1;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="quest-title">${esc(sk.name)}</span>
+                <span class="tag purple">POZIOM ${sk.level}</span>
+              </div>
+              <div class="quest-meta" style="margin:4px 0 8px;">
+                <span class="tag">${esc(sk.type)}</span>
+                <span class="tag">${esc(sk.stat)}</span>
+                <span>Postęp poziomu: ${sk.xp}/100 XP</span>
+              </div>
+              <div class="bar-track" style="height:7px;">
+                <div class="bar-fill purple" style="width:${pct}%"></div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn btn-sm" data-train-skill="${esc(sk.id)}">+ Praktyka (+25 XP)</button>
+              <button class="btn btn-sm btn-danger" data-del-skill="${esc(sk.id)}">✕</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const rewardsHtml = state.rewards.map(rw => `
+        <div class="quest-item">
+          <div>
+            <p class="quest-title">${esc(rw.title)}</p>
+            <span class="tag gold">Koszt: ◈ ${rw.cost} Złota</span>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sm btn-gold" data-buy-reward="${esc(rw.id)}">Kup Nagrodę</button>
+            <button class="btn btn-sm btn-danger" data-del-reward="${esc(rw.id)}">✕</button>
+          </div>
+        </div>
+      `).join("");
+
+      const statOptions = CORE_STATS.map(s => `<option value="${s.id}">${s.id} — ${esc(s.name)}</option>`).join("");
+
+      return `
+        <div class="grid-2">
+          <!-- SKILLS TREE -->
+          <section class="hud-card">
+            <p class="section-tag">[ DRZEWKO UMIEJĘTNOŚCI GRACZA ]</p>
+            <h2 class="card-title">Umiejętności Pasywne & Aktywne</h2>
+            <p class="muted">
+              Każda umiejętność życiowa rośnie poprzez powtarzanie. Kliknij „+ Praktyka”, gdy dziś świadomie ćwiczyłeś/aś daną zdolność.
+            </p>
+
+            <div style="margin:14px 0;">
+              ${skillsHtml}
+            </div>
+
+            <form id="form-add-skill" style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(0,229,255,0.2);">
+              <h4 style="margin:0 0 10px;">Odblokuj Nową Umiejętność</h4>
+              <label class="field">
+                Nazwa umiejętności
+                <input type="text" name="name" required placeholder="np. Gotowanie zdrowych posiłków / Programowanie / Medytacja">
+              </label>
+              <div class="grid-2" style="gap:10px;">
+                <label class="field">
+                  Typ
+                  <select name="type">
+                    <option value="AKTYWNA">AKTYWNA (Świadome działanie)</option>
+                    <option value="PASYWNA">PASYWNA (Nawyk / Postawa)</option>
+                  </select>
+                </label>
+                <label class="field">
+                  Atrybut
+                  <select name="stat">${statOptions}</select>
+                </label>
+              </div>
+              <button class="btn btn-sm" type="submit">+ Dodaj Umiejętność</button>
+            </form>
+          </section>
+
+          <!-- SYSTEM SHOP -->
+          <section class="hud-card">
+            <p class="section-tag gold">[ SKLEP SYSTEMU — NAGRODY ZA ZŁOTO ]</p>
+            <h2 class="card-title">Twoje Złoto: ◈ ${state.player.gold}</h2>
+            <p class="muted">
+              Mózg potrzebuje docenienia wysiłku. Wydawaj Złoto zdobyte w misjach na nagrody bez poczucia winy!
+            </p>
+
+            <div style="margin:14px 0;">
+              ${rewardsHtml}
+            </div>
+
+            <form id="form-add-reward" style="margin-top:16px; padding-top:14px; border-top:1px solid rgba(0,229,255,0.2);">
+              <h4 style="margin:0 0 10px;">Dodaj Własną Nagrodę do Sklepu</h4>
+              <label class="field">
+                Nagroda
+                <input type="text" name="title" required placeholder="np. Wieczór w kinie / Nowa gra / Dzień bez budzika">
+              </label>
+              <label class="field">
+                Koszt w Złocie
+                <input type="number" name="cost" value="100" min="10" max="5000">
+              </label>
+              <button class="btn btn-sm btn-gold" type="submit">+ Dodaj do Sklepu</button>
+            </form>
+          </section>
+        </div>
+      `;
+    }
+
+    // TAB 5: HUNTER LOGS (JOURNAL)
+    function renderLogsTab() {
+      const logsHtml = state.logs.length
+        ? state.logs.map(lg => `
+            <div class="hud-card" style="padding:16px; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="tag">${esc(lg.date)}</span>
+                <button class="btn btn-sm btn-danger" data-del-log="${esc(lg.id)}">Usuń</button>
+              </div>
+              <h4 style="margin:8px 0 6px;">${esc(lg.title)}</h4>
+              ${lg.win ? `<p style="margin:4px 0;"><strong>🏆 Zwycięstwo dnia:</strong> ${esc(lg.win)}</p>` : ""}
+              ${lg.drain ? `<p style="margin:4px 0;"><strong>⚡ Co dało / zabrało energię:</strong> ${esc(lg.drain)}</p>` : ""}
+              ${lg.insight ? `<p style="margin:4px 0;"><strong>👁️ Odkrycie o sobie:</strong> ${esc(lg.insight)}</p>` : ""}
+            </div>
+          `).join("")
+        : `<p class="muted">Brak wpisów w Logach Łowcy. Dodaj pierwszą refleksję, aby zdobyć +25 EXP i +1 PER.</p>`;
+
+      return `
+        <div class="grid-2">
+          <section class="hud-card">
+            <p class="section-tag">[ ZAPIS OBSERWACJI WEWNĘTRZNYCH ]</p>
+            <h2 class="card-title">Nowy Log Łowcy</h2>
+            <p class="muted">
+              Każdy wpis zwiększa Twoją Percepcję (PER) i pozwala zauważyć wzorce, które rządzą Twoim życiem.
+            </p>
+
+            <form id="form-add-log">
+              <label class="field">
+                Tytuł / Nastrój Dnia
+                <input type="text" name="title" placeholder="np. Dzień przełamania oporu / Spokojny wieczór">
+              </label>
+              <label class="field">
+                1. Z czego jestem dziś dumny/a (nawet najmniejsza rzecz)?
+                <textarea name="win" placeholder="Docenienie małych kroków buduje sprawczość..."></textarea>
+              </label>
+              <label class="field">
+                2. Co dało mi dziś energię (MP/HP), a co ją wyssało?
+                <textarea name="drain" placeholder="Jakie czynności, myśli lub sytuacje wpłynęły na mój stan?"></textarea>
+              </label>
+              <label class="field">
+                3. Czego dowiedziałem/am się dziś o sobie i swoich potrzebach?
+                <textarea name="insight" required placeholder="Szczera myśl bez oceniania siebie..."></textarea>
+              </label>
+              <button class="btn" type="submit">Zapisz Log w Systemie (+25 EXP, +1 PER)</button>
+            </form>
+          </section>
+
+          <section class="hud-card">
+            <p class="section-tag">[ ARCHIWUM SYSTEMOWE ]</p>
+            <h2 class="card-title">Historia Logów (${state.logs.length})</h2>
+            <div style="margin-top:12px;">
+              ${logsHtml}
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function render() {
+      renderHeader();
+
+      document.querySelectorAll(".hud-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === activeTab);
+      });
+
+      const toastArea = document.getElementById("toast-area");
+      if (toastText) {
+        toastArea.innerHTML = `
+          <div class="sys-toast">
+            <span>${esc(toastText)}</span>
+            <button class="btn btn-sm" id="btn-close-toast">OK</button>
+          </div>
+        `;
+        document.getElementById("btn-close-toast").addEventListener("click", () => {
+          toastText = "";
+          toastArea.innerHTML = "";
+        });
+      } else {
+        toastArea.innerHTML = "";
+      }
+
+      const main = document.getElementById("main-view");
+      if (activeTab === "status") main.innerHTML = renderStatusTab();
+      else if (activeTab === "quests") main.innerHTML = renderQuestsTab();
+      else if (activeTab === "awakening") main.innerHTML = renderAwakeningTab();
+      else if (activeTab === "skills") main.innerHTML = renderSkillsTab();
+      else if (activeTab === "logs") main.innerHTML = renderLogsTab();
+
+      bindTabEvents();
+    }
+
+    function bindTabEvents() {
+      // STATUS TAB EVENTS
+      const hpSlider = document.getElementById("slider-hp");
+      if (hpSlider) {
+        const bindGauge = (sliderId, key, barId, lblId) => {
+          const el = document.getElementById(sliderId);
+          el.addEventListener("input", () => {
+            state.player[key] = Number(el.value);
+            document.getElementById(barId).style.width = `${el.value}%`;
+            document.getElementById(lblId).textContent = `${el.value}%`;
+            saveState();
+          });
+        };
+        bindGauge("slider-hp", "hp", "hp-bar", "hp-lbl");
+        bindGauge("slider-mp", "mp", "mp-bar", "mp-lbl");
+        bindGauge("slider-fatigue", "fatigue", "fat-bar", "fat-lbl");
+      }
+
+      document.querySelectorAll("[data-alloc]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const statId = btn.dataset.alloc;
+          if (state.player.freePoints > 0) {
+            state.player.freePoints -= 1;
+            state.player.stats[statId] += 1;
+            playSystemSound("click");
+            saveState();
+            render();
+          }
+        });
+      });
+
+      const identityForm = document.getElementById("form-player-identity");
+      if (identityForm) {
+        identityForm.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(identityForm);
+          state.player.name = String(fd.get("name") || "Gracz").trim();
+          state.player.title = String(fd.get("title") || "Przebudzony").trim();
+          state.player.customClass = String(fd.get("customClass") || "").trim();
+          toastText = "[SYSTEM] Zaktualizowano profil Gracza.";
+          playSystemSound("click");
+          saveState();
+          render();
+        });
+      }
+
+      document.querySelectorAll("[data-dim-cur]").forEach(input => {
+        input.addEventListener("input", () => {
+          const id = input.dataset.dimCur;
+          state.dimensions[id].current = Number(input.value);
+          document.getElementById(`cur-out-${id}`).textContent = input.value;
+          document.getElementById("radar-container").innerHTML = buildRadarChartSVG();
+        });
+      });
+
+      document.querySelectorAll("[data-dim-trg]").forEach(input => {
+        input.addEventListener("input", () => {
+          const id = input.dataset.dimTrg;
+          state.dimensions[id].target = Number(input.value);
+          document.getElementById(`trg-out-${id}`).textContent = input.value;
+          document.getElementById("radar-container").innerHTML = buildRadarChartSVG();
+        });
+      });
+
+      document.querySelectorAll("[data-dim-note]").forEach(input => {
+        input.addEventListener("input", () => {
+          const id = input.dataset.dimNote;
+          state.dimensions[id].note = input.value;
+        });
+      });
+
+      const btnSaveDims = document.getElementById("btn-save-dimensions");
+      if (btnSaveDims) {
+        btnSaveDims.addEventListener("click", () => {
+          grantRewards({ exp: 15, gold: 5, stat: "PER", statAmount: 1, reason: "Kalibracja 9 Wymiarów Życia" });
+        });
+      }
+
+      // QUESTS TAB EVENTS
+      document.querySelectorAll("[data-toggle-daily]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.toggleDaily;
+          const q = state.dailyQuests.find(item => item.id === id);
+          if (!q) return;
+          const today = todayISO();
+          if (!Array.isArray(q.doneDates)) q.doneDates = [];
+
+          if (q.doneDates.includes(today)) {
+            q.doneDates = q.doneDates.filter(d => d !== today);
+            saveState();
+            render();
+          } else {
+            q.doneDates.push(today);
+            updateStreakIfNeeded();
+            grantRewards({
+              exp: Number(q.exp) || 25,
+              gold: Number(q.gold) || 10,
+              stat: q.stat,
+              statAmount: 1,
+              reason: `Misja wykonana: ${q.title}`
+            });
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-del-daily]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.dailyQuests = state.dailyQuests.filter(q => q.id !== btn.dataset.delDaily);
+          saveState();
+          render();
+        });
+      });
+
+      const btnEmergency = document.getElementById("btn-emergency-quest");
+      if (btnEmergency) {
+        btnEmergency.addEventListener("click", () => {
+          const today = todayISO();
+          if (state.emergencyQuestDoneDate === today) return;
+          state.emergencyQuestDoneDate = today;
+          updateStreakIfNeeded();
+          grantRewards({
+            exp: 20,
+            gold: 10,
+            stat: "VIT",
+            statAmount: 1,
+            reason: "Protokół Przetrwania wykonany — seria utrzymana!"
+          });
+        });
+      }
+
+      const formAddDaily = document.getElementById("form-add-daily");
+      if (formAddDaily) {
+        formAddDaily.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAddDaily);
+          state.dailyQuests.push({
+            id: "dq_" + Date.now(),
+            title: String(fd.get("title") || "").trim(),
+            stat: String(fd.get("stat") || "STR"),
+            exp: Number(fd.get("exp")) || 30,
+            gold: 15,
+            doneDates: []
+          });
+          saveState();
+          playSystemSound("click");
+          render();
+        });
+      }
+
+      document.querySelectorAll("[data-boss-id][data-step-id]").forEach(chk => {
+        chk.addEventListener("change", () => {
+          const boss = state.bossQuests.find(b => b.id === chk.dataset.bossId);
+          if (!boss) return;
+          const step = boss.steps.find(s => s.id === chk.dataset.stepId);
+          if (!step) return;
+          step.done = chk.checked;
+          if (chk.checked) {
+            grantRewards({ exp: 15, gold: 5, reason: `Zadano obrażenia Bossowi: ${boss.title}` });
+          } else {
+            saveState();
+            render();
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-claim-boss]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const boss = state.bossQuests.find(b => b.id === btn.dataset.claimBoss);
+          if (!boss || boss.completed) return;
+          boss.completed = true;
+          const dimObj = LIFE_DIMENSIONS.find(d => d.id === boss.dimension);
+          grantRewards({
+            exp: boss.rewardExp || 150,
+            gold: boss.rewardGold || 100,
+            stat: dimObj ? dimObj.stat : "STR",
+            statAmount: 2,
+            reason: `LOCH OCZYSZCZONY: ${boss.title}!`
+          });
+        });
+      });
+
+      document.querySelectorAll("[data-del-boss]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.bossQuests = state.bossQuests.filter(b => b.id !== btn.dataset.delBoss);
+          saveState();
+          render();
+        });
+      });
+
+      const formAddBoss = document.getElementById("form-add-boss");
+      if (formAddBoss) {
+        formAddBoss.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAddBoss);
+          const rank = String(fd.get("rank") || "C-RANK");
+          const rewardMap = { "E-RANK": 80, "D-RANK": 120, "C-RANK": 180, "B-RANK": 260, "A-RANK": 380, "S-RANK": 550 };
+          const rawSteps = String(fd.get("steps") || "")
+            .split(/\r?\n/)
+            .map(s => s.trim())
+            .filter(Boolean);
+
+          state.bossQuests.unshift({
+            id: "boss_" + Date.now(),
+            title: String(fd.get("title") || "").trim(),
+            rank,
+            dimension: String(fd.get("dimension") || "meaning"),
+            why: String(fd.get("why") || "").trim(),
+            rewardExp: rewardMap[rank] || 180,
+            rewardGold: Math.round((rewardMap[rank] || 180) * 0.6),
+            completed: false,
+            steps: (rawSteps.length ? rawSteps : ["Zrobić pierwszy krok"]).map((txt, idx) => ({
+              id: `st_${Date.now()}_${idx}`,
+              text: txt,
+              done: false
+            }))
+          });
+          saveState();
+          playSystemSound("quest");
+          render();
+        });
+      }
+
+      // AWAKENING TAB EVENTS
+      document.querySelectorAll("[name^='arch-q-']").forEach(radio => {
+        radio.addEventListener("change", () => {
+          const idx = Number(radio.name.replace("arch-q-", ""));
+          state.player.archetypeAnswers[idx] = radio.value;
+          saveState();
+          playSystemSound("click");
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-val-chip]").forEach(chip => {
+        chip.addEventListener("click", () => {
+          const val = chip.dataset.valChip;
+          const list = state.awakening.values || [];
+          if (list.includes(val)) {
+            state.awakening.values = list.filter(v => v !== val);
+          } else {
+            state.awakening.values = [...list, val];
+          }
+          saveState();
+          playSystemSound("click");
+          render();
+        });
+      });
+
+      const formAwakening = document.getElementById("form-awakening");
+      if (formAwakening) {
+        formAwakening.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAwakening);
+          ["flow", "talents", "deepDesire", "antiVision", "idealTuesday", "shadowFear", "boundaries", "creed"].forEach(k => {
+            state.awakening[k] = String(fd.get(k) || "").trim();
+          });
+          grantRewards({
+            exp: 40,
+            gold: 20,
+            stat: "PER",
+            statAmount: 2,
+            reason: "Zaktualizowano Kodeks Tożsamości i Przebudzenia"
+          });
+        });
+      }
+
+      // SKILLS & SHOP TAB EVENTS
+      document.querySelectorAll("[data-train-skill]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const sk = state.skills.find(s => s.id === btn.dataset.trainSkill);
+          if (!sk) return;
+          sk.xp += 25;
+          let skillUp = false;
+          if (sk.xp >= 100) {
+            sk.xp -= 100;
+            sk.level += 1;
+            skillUp = true;
+          }
+          grantRewards({
+            exp: skillUp ? 35 : 15,
+            gold: 5,
+            stat: sk.stat,
+            statAmount: skillUp ? 1 : 0,
+            reason: skillUp ? `Umiejętność „${sk.name}” awansowała na Poziom ${sk.level}!` : `Praktyka umiejętności: ${sk.name}`
+          });
+        });
+      });
+
+      document.querySelectorAll("[data-del-skill]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.skills = state.skills.filter(s => s.id !== btn.dataset.delSkill);
+          saveState();
+          render();
+        });
+      });
+
+      const formAddSkill = document.getElementById("form-add-skill");
+      if (formAddSkill) {
+        formAddSkill.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAddSkill);
+          state.skills.push({
+            id: "sk_" + Date.now(),
+            name: String(fd.get("name") || "").trim(),
+            type: String(fd.get("type") || "AKTYWNA"),
+            stat: String(fd.get("stat") || "INT"),
+            level: 1,
+            xp: 0
+          });
+          saveState();
+          playSystemSound("click");
+          render();
+        });
+      }
+
+      document.querySelectorAll("[data-buy-reward]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const rw = state.rewards.find(r => r.id === btn.dataset.buyReward);
+          if (!rw) return;
+          if (state.player.gold < rw.cost) {
+            toastText = `[SYSTEM] Niewystarczająca ilość Złota (potrzebujesz ${rw.cost}, masz ${state.player.gold}). Wykonaj misje!`;
+            render();
+            return;
+          }
+          state.player.gold -= rw.cost;
+          toastText = `[SKLEP SYSTEMU] Zakupiono nagrodę: „${rw.title}”! Korzystaj bez wyrzutów sumienia.`;
+          playSystemSound("quest");
+          saveState();
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-del-reward]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.rewards = state.rewards.filter(r => r.id !== btn.dataset.delReward);
+          saveState();
+          render();
+        });
+      });
+
+      const formAddReward = document.getElementById("form-add-reward");
+      if (formAddReward) {
+        formAddReward.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAddReward);
+          state.rewards.push({
+            id: "rw_" + Date.now(),
+            title: String(fd.get("title") || "").trim(),
+            cost: Number(fd.get("cost")) || 100
+          });
+          saveState();
+          playSystemSound("click");
+          render();
+        });
+      }
+
+      // LOGS TAB EVENTS
+      const formAddLog = document.getElementById("form-add-log");
+      if (formAddLog) {
+        formAddLog.addEventListener("submit", e => {
+          e.preventDefault();
+          const fd = new FormData(formAddLog);
+          state.logs.unshift({
+            id: "lg_" + Date.now(),
+            date: todayISO(),
+            title: String(fd.get("title") || "").trim() || "Raport Dnia",
+            win: String(fd.get("win") || "").trim(),
+            drain: String(fd.get("drain") || "").trim(),
+            insight: String(fd.get("insight") || "").trim()
+          });
+          updateStreakIfNeeded();
+          grantRewards({
+            exp: 25,
+            gold: 10,
+            stat: "PER",
+            statAmount: 1,
+            reason: "Zapisano nowy Log Łowcy"
+          });
+        });
+      }
+
+      document.querySelectorAll("[data-del-log]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.logs = state.logs.filter(l => l.id !== btn.dataset.delLog);
+          saveState();
+          render();
+        });
+      });
+    }
+
+    // GLOBAL NAVIGATION & BACKUP
+    document.getElementById("hud-nav").addEventListener("click", e => {
+      const btn = e.target.closest("[data-tab]");
+      if (!btn) return;
+      activeTab = btn.dataset.tab;
+      playSystemSound("click");
+      render();
+    });
+
+    document.getElementById("btn-export").addEventListener("click", () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `system-gracza-${todayISO()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    document.getElementById("input-import").addEventListener("change", e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(String(reader.result));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(imported));
+          state = loadState();
+          toastText = "[SYSTEM] Pomyślnie wczytano plik zapisu Gracza!";
+          playSystemSound("levelup");
+          render();
+        } catch (err) {
+          alert("Nieprawidłowy plik zapisu JSON.");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      if (!confirm("Czy na pewno chcesz zresetować cały System i zacząć od Poziomu 1?")) return;
+      state = createDefaultState();
+      saveState();
+      toastText = "[SYSTEM] Zresetowano parametry Gracza do stanu początkowego.";
+      render();
+    });
+
+    render();
+  </script>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+  </script>
+
+  <!-- ======================= MODUŁ POWIADOMIEŃ SYSTEMU ======================= -->
+  <style>
+    #sys-bell {
+      position: fixed; right: 14px; bottom: 20px; z-index: 600;
+      width: 52px; height: 52px; border-radius: 50%;
+      border: 1px solid var(--cyan); background: rgba(3,7,18,.94); color: var(--cyan);
+      font-size: 22px; display: grid; place-items: center;
+      box-shadow: 0 0 18px rgba(0,229,255,.35); cursor: pointer;
+    }
+    #sys-bell.on { border-color: var(--purple); color: #e9d5ff; box-shadow: 0 0 20px rgba(168,85,247,.55); }
+    @media (max-width: 600px) { #sys-bell { bottom: 78px; } }
+    .notif-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 10px 0; border-bottom: 1px solid rgba(0,229,255,.15); text-align: left; font-size: 14px;
+    }
+    .notif-row input[type="time"] { background: var(--bg-input); border: 1px solid rgba(0,229,255,.28); color: #fff; padding: 6px 8px; }
+    .notif-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--cyan); }
+    .notif-status { font-size: 12.5px; padding: 9px 11px; margin: 8px 0 12px; border: 1px solid rgba(0,229,255,.25); background: rgba(0,229,255,.06); text-align: left; line-height: 1.5; }
+  </style>
+
+  <script>
+  (function () {
+    const NKEY = "solo_system_notifications_v1";
+    const DEFAULTS = { enabled: false, questOn: true, questTime: "20:00", logOn: true, logTime: "22:00", fired: {} };
+    let cfg = loadCfg();
+    let bgStatus = "";
+
+    function loadCfg() { try { return { ...DEFAULTS, ...(JSON.parse(localStorage.getItem(NKEY) || "{}")) }; } catch (e) { return { ...DEFAULTS }; } }
+    function saveCfg() { localStorage.setItem(NKEY, JSON.stringify(cfg)); syncToSW(); }
+
+    const supported = "Notification" in window;
+    const perm = () => (supported ? Notification.permission : "unsupported");
+    const isAndroid = /Android/i.test(navigator.userAgent);
+
+    function hm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+
+    function dayStatus() {
+      const today = todayISO();
+      const total = state.dailyQuests.length;
+      const done = state.dailyQuests.filter(q => (q.doneDates || []).includes(today)).length;
+      const logDone = state.logs.some(l => l.date === today);
+      return { today, total, done, logDone };
+    }
+
+    async function notify(title, body, tag) {
+      if (perm() !== "granted") return;
+      const opts = { body, tag, icon: "icon-192.png", badge: "icon-192.png", renotify: true, data: { url: "./index.html" } };
+      try {
+        const reg = await navigator.serviceWorker?.ready;
+        if (reg) { await reg.showNotification(title, opts); return; }
+      } catch (e) {}
+      try { new Notification(title, opts); } catch (e) {}
+    }
+
+    function tick() {
+      if (!cfg.enabled || perm() !== "granted") return;
+      const s = dayStatus(), now = hm();
+      Object.keys(cfg.fired).forEach(k => { if (!k.endsWith(s.today)) delete cfg.fired[k]; });
+      let changed = false;
+
+      if (cfg.questOn && now >= cfg.questTime && !cfg.fired["q-" + s.today] && s.done < s.total) {
+        notify("[SYSTEM] Misje Codzienne",
+          `Pozostało ${s.total - s.done} z ${s.total} misji. Seria: 🔥 ${state.player.streak}. Nie oddawaj dzisiejszego dnia Cieniowi.`, "sys-quest");
+        cfg.fired["q-" + s.today] = true; changed = true;
+      }
+      if (cfg.logOn && now >= cfg.logTime && !cfg.fired["l-" + s.today] && !s.logDone) {
+        notify("[SYSTEM] Log Łowcy",
+          "Zanim zaśniesz: z czego jesteś dziś dumny/a? Czy zauważyłeś/aś swój Cień w akcji?", "sys-log");
+        cfg.fired["l-" + s.today] = true; changed = true;
+      }
+      if (changed) saveCfg(); else syncToSW();
+    }
+
+    function syncToSW() {
+      try {
+        const s = dayStatus();
+        navigator.serviceWorker?.controller?.postMessage({
+          type: "SYS_NOTIF_CONFIG",
+          payload: { enabled: cfg.enabled, questOn: cfg.questOn, questTime: cfg.questTime, logOn: cfg.logOn, logTime: cfg.logTime,
+                     date: s.today, questsLeft: s.total - s.done, logDone: s.logDone, fired: cfg.fired }
+        });
+      } catch (e) {}
+    }
+
+    async function registerPeriodicSync() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (!("periodicSync" in reg)) return "Tryb w tle: niedostępny w tej przeglądarce.";
+        const st = await navigator.permissions.query({ name: "periodic-background-sync" });
+        if (st.state !== "granted") return "Tryb w tle: niedostępny — zainstaluj apkę na ekranie głównym (Chrome → Zainstaluj aplikację).";
+        await reg.periodicSync.register("sys-reminder", { minInterval: 60 * 60 * 1000 });
+        return "Tryb w tle: AKTYWNY ✓ (Android sprawdza co ok. 1–12 h).";
+      } catch (e) { return "Tryb w tle: niedostępny."; }
+    }
+
+    async function scheduleNative() {
+      const LN = window.Capacitor?.Plugins?.LocalNotifications;
+      if (!LN) return false;
+      try {
+        await LN.requestPermissions();
+        await LN.cancel({ notifications: [{ id: 101 }, { id: 102 }] });
+        if (!cfg.enabled) return true;
+        const list = [];
+        const [qh, qm] = cfg.questTime.split(":").map(Number);
+        const [lh, lm] = cfg.logTime.split(":").map(Number);
+        if (cfg.questOn) list.push({ id: 101, title: "[SYSTEM] Misje Codzienne", body: "Twoje misje czekają. Utrzymaj serię.", schedule: { on: { hour: qh, minute: qm }, allowWhileIdle: true } });
+        if (cfg.logOn)   list.push({ id: 102, title: "[SYSTEM] Log Łowcy", body: "Z czego jesteś dziś dumny/a? Zapisz Log przed snem.", schedule: { on: { hour: lh, minute: lm }, allowWhileIdle: true } });
+        if (list.length) await LN.schedule({ notifications: list });
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function alarmIntent(time, msg) {
+      const [h, m] = time.split(":").map(Number);
+      return `intent:#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${h};i.android.intent.extra.alarm.MINUTES=${m};S.android.intent.extra.alarm.MESSAGE=${encodeURIComponent(msg)};b.android.intent.extra.alarm.SKIP_UI=false;end`;
+    }
+
+    const bell = document.createElement("button");
+    bell.id = "sys-bell"; bell.title = "Powiadomienia Systemu"; bell.textContent = "🔔";
+    document.body.appendChild(bell);
+    const refreshBell = () => bell.classList.toggle("on", cfg.enabled && perm() === "granted");
+    refreshBell();
+
+    function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+
+    function openModal() {
+      const root = document.getElementById("modal-root");
+      const p = perm(), s = dayStatus();
+      const native = !!window.Capacitor?.Plugins?.LocalNotifications;
+      const permText = p === "granted" ? "przyznane ✓" : p === "denied" ? "ZABLOKOWANE — odblokuj w ustawieniach strony/aplikacji" : p === "unsupported" ? "niedostępne w tej przeglądarce" : "jeszcze nie zapytano";
+
+      root.innerHTML = `
+        <div class="modal-backdrop" id="notif-backdrop"><div class="modal-box" style="max-width:560px;">
+          <p class="section-tag">[ PROTOKÓŁ PRZYPOMNIEŃ SYSTEMU ]</p>
+          <h2 style="margin:4px 0 8px; font-size:22px;">Powiadomienia</h2>
+          <div class="notif-status">
+            Uprawnienie: <strong>${permText}</strong><br>
+            Dziś: misje <strong>${s.done}/${s.total}</strong> · Log Łowcy: <strong>${s.logDone ? "zapisany ✓" : "brak"}</strong><br>
+            ${native ? "Tryb natywny (Capacitor): <strong>AKTYWNY ✓</strong> — powiadomienia punktualne." : (bgStatus || "Tryb w tle: sprawdź po przyznaniu uprawnienia.")}
+          </div>
+          ${p !== "granted" && p !== "unsupported" ? `<button class="btn" id="notif-perm" style="width:100%; margin-bottom:10px;">Zezwól na powiadomienia</button>` : ""}
+          <div class="notif-row"><span>Przypomnienia włączone</span><input type="checkbox" id="n-enabled" ${cfg.enabled ? "checked" : ""}></div>
+          <div class="notif-row"><span>Misje Codzienne o</span><span><input type="checkbox" id="n-quest-on" ${cfg.questOn ? "checked" : ""}> <input type="time" id="n-quest-time" value="${cfg.questTime}"></span></div>
+          <div class="notif-row"><span>Log Łowcy (przed snem) o</span><span><input type="checkbox" id="n-log-on" ${cfg.logOn ? "checked" : ""}> <input type="time" id="n-log-time" value="${cfg.logTime}"></span></div>
+          ${native ? "" : `
+          <p class="muted" style="text-align:left; margin:12px 0 6px; font-size:12.5px;">
+            Gdy apka jest całkiem zamknięta, Android uruchamia przypomnienia tylko okresowo. Dla 100% pewności dodaj alarm w Zegarze:
+          </p>
+          ${isAndroid ? `
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a class="btn btn-sm btn-purple" href="${alarmIntent(cfg.questTime, "[SYSTEM] Misje Codzienne")}">⏰ Alarm: Misje ${cfg.questTime}</a>
+              <a class="btn btn-sm btn-purple" href="${alarmIntent(cfg.logTime, "[SYSTEM] Log Łowcy")}">⏰ Alarm: Log ${cfg.logTime}</a>
+            </div>
+            <p class="muted" style="text-align:left; font-size:11.5px; margin:6px 0 0;">W Zegarze ustaw jednorazowo powtarzanie „codziennie”.</p>`
+            : `<p class="muted" style="text-align:left; font-size:12px;">(Przyciski alarmów pojawiają się na telefonie z Androidem.)</p>`}`}
+          <div style="display:flex; gap:8px; margin-top:14px;">
+            <button class="btn btn-sm" id="notif-test" ${p !== "granted" ? "disabled" : ""}>Test</button>
+            <button class="btn btn-sm btn-purple" id="notif-save" style="flex:1;">Zapisz</button>
+            <button class="btn btn-sm" id="notif-close">Zamknij</button>
+          </div>
+        </div></div>`;
+
+      const permBtn = document.getElementById("notif-perm");
+      if (permBtn) permBtn.addEventListener("click", async () => {
+        await Notification.requestPermission();
+        bgStatus = await registerPeriodicSync();
+        refreshBell(); openModal();
+      });
+      document.getElementById("notif-test").addEventListener("click", () =>
+        notify("[SYSTEM] Test połączenia", "Kanał powiadomień działa. Gracz " + state.player.name + " jest gotowy.", "sys-test"));
+      document.getElementById("notif-save").addEventListener("click", async () => {
+        cfg.enabled   = document.getElementById("n-enabled").checked;
+        cfg.questOn   = document.getElementById("n-quest-on").checked;
+        cfg.questTime = document.getElementById("n-quest-time").value || "20:00";
+        cfg.logOn     = document.getElementById("n-log-on").checked;
+        cfg.logTime   = document.getElementById("n-log-time").value || "22:00";
+        saveCfg();
+        if (cfg.enabled && perm() === "default") await Notification.requestPermission();
+        if (cfg.enabled) bgStatus = await registerPeriodicSync();
+        await scheduleNative();
+        refreshBell(); tick(); playSystemSound("quest");
+        closeModal();
+      });
+      document.getElementById("notif-close").addEventListener("click", closeModal);
+      document.getElementById("notif-backdrop").addEventListener("click", e => { if (e.target.id === "notif-backdrop") closeModal(); });
+    }
+
+    bell.addEventListener("click", () => { playSystemSound("click"); openModal(); });
+
+    setInterval(tick, 30000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+    setTimeout(tick, 1500);
+
+    const _origSave = saveState;
+    saveState = function () { _origSave(); syncToSW(); };
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.ready.then(syncToSW);
+      navigator.serviceWorker.addEventListener("controllerchange", syncToSW);
+    }
+  })();
+  </script>
+  <!-- ===================== KONIEC MODUŁU POWIADOMIEŃ ===================== -->
+</body>
+</html>
+```

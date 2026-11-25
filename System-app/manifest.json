@@ -1,0 +1,17 @@
+{
+  "name": "SYSTEM — Okno Statusu Gracza",
+  "short_name": "SYSTEM",
+  "description": "System rozwoju, samoświadomości i Armii Cieni w stylu Solo Leveling",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#030712",
+  "theme_color": "#030712",
+  "lang": "pl",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
